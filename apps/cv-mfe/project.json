@@ -1,9 +1,9 @@
 {
-  "name": "cv-mfe-test",
+  "name": "cv-mfe",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "prefix": "app",
-  "sourceRoot": "apps/cv-mfe-test/src",
+  "sourceRoot": "apps/cv-mfe/src",
   "tags": [],
   "targets": {
     "build": {
@@ -11,10 +11,10 @@
       "options": {},
       "configurations": {
         "production": {
-          "target": "cv-mfe-test:esbuild:production"
+          "target": "cv-mfe:esbuild:production"
         },
         "development": {
-          "target": "cv-mfe-test:esbuild:development",
+          "target": "cv-mfe:esbuild:development",
           "dev": true
         }
       },
@@ -23,7 +23,7 @@
     "serve": {
       "executor": "@angular-architects/native-federation:build",
       "options": {
-        "target": "cv-mfe-test:serve-original:development",
+        "target": "cv-mfe:serve-original:development",
         "rebuildDelay": 0,
         "dev": true,
         "port": 0
@@ -40,39 +40,31 @@
       "readyWhen": {
         "signal": true
       },
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "executor": "@nx/web:file-server",
       "options": {
-        "buildTarget": "cv-mfe-test:build",
+        "buildTarget": "cv-mfe:build",
         "port": 4200,
-        "staticFilePath": "dist/apps/cv-mfe-test/browser",
+        "staticFilePath": "dist/apps/cv-mfe/browser",
         "spa": true
       }
     },
     "esbuild": {
-      "executor": "@angular-devkit/build-angular:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
-        "outputPath": "dist/apps/cv-mfe-test",
-        "browser": "apps/cv-mfe-test/src/main.ts",
-        "tsConfig": "apps/cv-mfe-test/tsconfig.app.json",
+        "outputPath": "dist/apps/cv-mfe",
+        "browser": "apps/cv-mfe/src/main.ts",
+        "tsConfig": "apps/cv-mfe/tsconfig.app.json",
         "assets": [
           {
             "glob": "**/*",
-            "input": "apps/cv-mfe-test/public"
+            "input": "apps/cv-mfe/public"
           }
         ],
-        "styles": [
-          "apps/cv-mfe-test/src/styles.css"
-        ],
-        "polyfills": [
-          "es-module-shims"
-        ]
+        "styles": ["apps/cv-mfe/src/styles.scss"],
+        "polyfills": ["es-module-shims"]
       },
       "configurations": {
         "production": {
@@ -106,10 +98,10 @@
       "defaultConfiguration": "development",
       "configurations": {
         "production": {
-          "buildTarget": "cv-mfe-test:esbuild:production"
+          "buildTarget": "cv-mfe:esbuild:production"
         },
         "development": {
-          "buildTarget": "cv-mfe-test:esbuild:development"
+          "buildTarget": "cv-mfe:esbuild:development"
         }
       },
       "options": {

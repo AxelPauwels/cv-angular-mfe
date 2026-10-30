@@ -33,8 +33,8 @@ export default defineConfig({
   },
   webServer: {
     command: isCI
-      ? 'npx nx run cv-mfe-test:serve-static'
-      : 'npx nx run cv-mfe-test:serve',
+      ? 'npx nx run cv-mfe:serve-static'
+      : 'npx nx run cv-mfe:serve',
     url: getReadyUrl('http://localhost:4200'),
     reuseExistingServer: true,
     cwd: workspaceRoot,
