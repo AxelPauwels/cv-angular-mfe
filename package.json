@@ -26,8 +26,7 @@
     "firebase:deploy": "npx firebase deploy --only hosting",
     "firebase:deploy-preview": "npx firebase hosting:channel:deploy preview",
     "firebase:emulate": "firebase emulators:start",
-    "firebase:github": "npx firebase init hosting:github",
-    "build-and-deploy": "npm run build:production && npm run firebase:deploy"
+    "firebase:link-github": "npx firebase init hosting:github"
   },
   "lint-staged": {
     "*.{css,scss}": [
