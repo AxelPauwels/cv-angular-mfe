@@ -19,7 +19,15 @@
     "prettier:fix": "nx format:write",
     "nx:show-projects": "nx show projects",
     "nx:graph": "nx graph",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:production": "sh scripts/build-production.sh",
+    "firebase:login": "npx firebase login",
+    "firebase:link-project": "npx firebase use --add",
+    "firebase:deploy": "npx firebase deploy --only hosting",
+    "firebase:deploy-preview": "npx firebase hosting:channel:deploy preview",
+    "firebase:emulate": "firebase emulators:start",
+    "firebase:github": "npx firebase init hosting:github",
+    "build-and-deploy": "npm run build:production && npm run firebase:deploy"
   },
   "lint-staged": {
     "*.{css,scss}": [

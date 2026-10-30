@@ -34,3 +34,7 @@ More info:
 
 - commitlint docs: https://commitlint.js.org/
 - Conventional Commits spec: https://www.conventionalcommits.org/en/v1.0.0-beta.4/
+
+## Deploy Firebase
+
+- To deploy to firebase, ensure you are logged in. cmd: firebase login --reauth
