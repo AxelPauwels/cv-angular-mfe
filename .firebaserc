@@ -1,6 +1,7 @@
 {
   "projects": {
-    "cv-angular-mfe": "cv-angular-mfe"
+    "cv-angular-mfe": "cv-angular-mfe",
+    "default": "cv-angular-mfe"
   },
   "targets": {},
   "etags": {}

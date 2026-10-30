@@ -13,7 +13,7 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.title')?.textContent).toContain(
-      'My Micro Frontend'
+      'My First Micro Frontend'
     );
   });
 });
