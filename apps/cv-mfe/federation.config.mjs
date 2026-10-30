@@ -7,7 +7,7 @@ export default withNativeFederation({
   name: 'cv-mfe',
 
   exposes: {
-    './web-components': './apps/cv-mfe/src/app/app.ts',
+    './web-components': './apps/cv-mfe/src/web-components.ts',
   },
 
   //shareScope: autoShareScope({level: 'minor'}),
