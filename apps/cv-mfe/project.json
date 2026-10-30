@@ -21,6 +21,10 @@
       "defaultConfiguration": "production"
     },
     "serve": {
+      "continuous": true,
+      "readyWhen": {
+        "url": "http://localhost:4201"
+      },
       "executor": "@angular-architects/native-federation:build",
       "options": {
         "target": "cv-mfe:serve-original:development",

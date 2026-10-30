@@ -5,7 +5,7 @@ import { getReadyUrl, workspaceRoot } from '@nx/devkit';
 const isCI = !!process.env['CI'];
 // For CI, you may want to set BASE_URL to the deployed application.
 // getReadyUrl moves the address to the port the dev server task reported.
-const baseURL = process.env['BASE_URL'] || getReadyUrl('http://localhost:4200');
+const baseURL = process.env['BASE_URL'] || getReadyUrl('http://localhost:4201');
 
 /**
  * Read environment variables from file.
@@ -35,7 +35,7 @@ export default defineConfig({
     command: isCI
       ? 'npx nx run cv-mfe:serve-static'
       : 'npx nx run cv-mfe:serve',
-    url: getReadyUrl('http://localhost:4200'),
+    url: getReadyUrl('http://localhost:4201'),
     reuseExistingServer: true,
     cwd: workspaceRoot,
   },
