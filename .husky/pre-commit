@@ -1,0 +1,4 @@
+# Run prettier (see package.json):
+npx lint-staged
+
+npx nx affected -t lint --uncommitted

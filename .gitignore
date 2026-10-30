@@ -1,0 +1,59 @@
+# Build output
+/dist/
+/out-tsc/
+/tmp/
+/coverage/
+*.tsbuildinfo
+
+# Dependencies
+/node_modules/
+
+# Environment files
+/.env
+
+# Angular
+.angular/
+
+# Nx
+.nx/cache
+.nx/workspace-data
+.nx/polygraph
+.nx/self-healing
+.nx/migrate-runs
+
+# Vitest
+.vitest
+
+# Logs
+npm-debug.log*
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# System files
+.DS_Store
+Thumbs.db
+
+# AI tooling
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
+.claude/settings.local.json
+.claude/worktrees
+.playwright-mcp
+
+.angular
+
+__screenshots__/
