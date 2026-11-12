@@ -1,0 +1,90 @@
+import {
+  booleanAttribute,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  input,
+  resource,
+  signal,
+  ViewEncapsulation,
+} from '@angular/core';
+import { CodeBlockLanguage, loadLanguage } from './code-block.languages';
+
+const COPIED_FEEDBACK_MS = 2000;
+
+@Component({
+  selector: 'app-code-block',
+  templateUrl: './code-block.html',
+  styleUrl: './code-block.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  // Highlighted markup is injected via innerHTML and therefore carries no
+  // emulated-encapsulation attributes; styles are scoped by the host selector.
+  encapsulation: ViewEncapsulation.None,
+})
+export class CodeBlock {
+  readonly code = input<string>('');
+  readonly language = input<CodeBlockLanguage>('typescript');
+  readonly lineNumbers = input(true, { transform: booleanAttribute });
+  readonly copyable = input(true, { transform: booleanAttribute });
+
+  /** Code without surrounding blank lines and shared indentation. */
+  protected readonly normalizedCode = computed(() => normalize(this.code()));
+
+  protected readonly lines = computed(() =>
+    Array.from(
+      { length: this.normalizedCode().split('\n').length },
+      (_, i) => i + 1
+    )
+  );
+
+  /** Highlighted HTML, or undefined while highlight.js/grammar is loading. */
+  protected readonly highlighted = resource({
+    params: () => ({ code: this.normalizedCode(), language: this.language() }),
+    loader: async ({ params }) => {
+      const [{ default: hljs }, { name, grammar }] = await Promise.all([
+        import('highlight.js/lib/core'),
+        loadLanguage(params.language),
+      ]);
+      if (!hljs.getLanguage(name)) {
+        hljs.registerLanguage(name, grammar);
+      }
+      // highlight.js escapes the source, so the result is safe to inject.
+      return hljs.highlight(params.code, { language: name }).value;
+    },
+  });
+
+  protected readonly copied = signal(false);
+
+  private copiedTimer?: ReturnType<typeof setTimeout>;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.copiedTimer));
+  }
+
+  protected async copy(): Promise<void> {
+    await navigator.clipboard.writeText(this.normalizedCode());
+    this.copied.set(true);
+    clearTimeout(this.copiedTimer);
+    this.copiedTimer = setTimeout(
+      () => this.copied.set(false),
+      COPIED_FEEDBACK_MS
+    );
+  }
+}
+
+function normalize(code: string): string {
+  const lines = code.replace(/\t/g, '  ').split(/\r?\n/);
+  while (lines.length && !lines[0].trim()) lines.shift();
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+
+  const indent = Math.min(
+    ...lines
+      .filter((line) => line.trim())
+      .map((line) => line.length - line.trimStart().length)
+  );
+  return Number.isFinite(indent)
+    ? lines.map((line) => line.slice(indent)).join('\n')
+    : '';
+}

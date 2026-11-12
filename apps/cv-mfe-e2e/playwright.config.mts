@@ -3,9 +3,14 @@ import { nxE2EPreset } from '@nx/playwright/preset';
 import { getReadyUrl, workspaceRoot } from '@nx/devkit';
 
 const isCI = !!process.env['CI'];
-// For CI, you may want to set BASE_URL to the deployed application.
+// cv-mfe:serve (dev) listens on 4300 - the port the host's localhost manifest
+// loads the remote from - and cv-mfe:serve-static (CI) on 4200.
 // getReadyUrl moves the address to the port the dev server task reported.
-const baseURL = process.env['BASE_URL'] || getReadyUrl('http://localhost:4201');
+const serverURL = getReadyUrl(
+  isCI ? 'http://localhost:4200' : 'http://localhost:4300'
+);
+// For CI, you may want to set BASE_URL to the deployed application.
+const baseURL = process.env['BASE_URL'] || serverURL;
 
 /**
  * Read environment variables from file.
@@ -24,7 +29,12 @@ const baseURL = process.env['BASE_URL'] || getReadyUrl('http://localhost:4201');
  * (.ts/.js/.mts/.mjs/.cts/.cjs).
  */
 export default defineConfig({
-  ...nxE2EPreset(import.meta.dirname, { testDir: './src' }),
+  ...nxE2EPreset(import.meta.dirname, {
+    testDir: './src',
+    // 'on-failure' starts a report server that blocks the CLI until Ctrl+C;
+    // open it on demand with `npm run e2e:report` instead.
+    openHtmlReport: 'never',
+  }),
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
@@ -35,7 +45,7 @@ export default defineConfig({
     command: isCI
       ? 'npx nx run cv-mfe:serve-static'
       : 'npx nx run cv-mfe:serve',
-    url: getReadyUrl('http://localhost:4201'),
+    url: serverURL,
     reuseExistingServer: true,
     cwd: workspaceRoot,
   },

@@ -1,0 +1,120 @@
+// Encapsulation is disabled (see component), so every rule is scoped to the
+// host element. Colours are custom properties so consumers can theme them.
+app-code-block {
+  --code-block-bg: #fff;
+  --code-block-fg: #24292f;
+  --code-block-border: #d0d7de;
+  --code-block-muted: #8c959f;
+  --code-block-keyword: #cf222e;
+  --code-block-string: #0a3069;
+  --code-block-title: #8250df;
+  --code-block-type: #953800;
+  --code-block-number: #0550ae;
+  --code-block-comment: #6e7781;
+  --code-block-tag: #116329;
+  --code-block-font: ui-monospace, sfmono-regular, menlo, consolas, monospace;
+
+  display: block;
+
+  .code-block {
+    background-color: var(--code-block-bg);
+    border: 1px solid var(--code-block-border);
+    border-radius: 6px;
+    color: var(--code-block-fg);
+    position: relative;
+  }
+
+  .code-block-copy {
+    background-color: var(--code-block-bg);
+    border: 1px solid var(--code-block-border);
+    border-radius: 4px;
+    color: var(--code-block-muted);
+    cursor: pointer;
+    font: 0.75rem/1 sans-serif;
+    opacity: 0;
+    padding: 4px 8px;
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    transition: opacity 150ms;
+  }
+
+  .code-block:hover .code-block-copy,
+  .code-block-copy:focus-visible {
+    opacity: 1;
+  }
+
+  .code-block-pre {
+    display: grid;
+    font: 0.875rem/1.5 var(--code-block-font);
+    grid-template-columns: 1fr;
+    margin: 0;
+    overflow-x: auto;
+    padding: 12px 0;
+    tab-size: 2;
+  }
+
+  .code-block-pre-numbered {
+    grid-template-columns: auto 1fr;
+  }
+
+  .code-block-gutter {
+    background-color: var(--code-block-bg);
+    border-right: 1px solid var(--code-block-border);
+    color: var(--code-block-muted);
+    display: flex;
+    flex-direction: column;
+    left: 0;
+    padding: 0 12px;
+    position: sticky;
+    text-align: right;
+    user-select: none;
+  }
+
+  .code-block-code {
+    padding: 0 12px;
+    white-space: pre;
+  }
+
+  /* stylelint-disable selector-class-pattern -- highlight.js token classes */
+  .hljs-keyword,
+  .hljs-meta,
+  .hljs-built_in {
+    color: var(--code-block-keyword);
+  }
+
+  .hljs-string,
+  .hljs-regexp {
+    color: var(--code-block-string);
+  }
+
+  .hljs-title,
+  .hljs-title.function_ {
+    color: var(--code-block-title);
+  }
+
+  .hljs-type,
+  .hljs-title.class_,
+  .hljs-attr,
+  .hljs-variable,
+  .hljs-property {
+    color: var(--code-block-type);
+  }
+
+  .hljs-number,
+  .hljs-literal,
+  .hljs-attribute {
+    color: var(--code-block-number);
+  }
+
+  .hljs-comment {
+    color: var(--code-block-comment);
+    font-style: italic;
+  }
+
+  .hljs-tag,
+  .hljs-name,
+  .hljs-selector-tag {
+    color: var(--code-block-tag);
+  }
+}
