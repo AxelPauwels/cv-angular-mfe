@@ -2,8 +2,9 @@
 # See "Releases" in README.md. `npm run nx:release` (or the pre-push prompt)
 # creates and pushes the release branch.
 #
-# - PR opened or updated: set the version from the branch name in package.json,
-#   commit it to the release branch and deploy a Firebase preview of that commit.
+# - PR opened or updated: check that it comes from release/x.y.z (Source branch) and
+#   that package.json already has that new version (Version; `npm run nx:release`
+#   commits it), then deploy a Firebase preview. Both checks are required on main.
 # - PR merged: tag the merge commit on main with the version, create a GitHub release
 #   and deploy that commit live (deploy-live.yml). This is the only automatic live
 #   deploy: other pushes or merges into main are checked by CI but not deployed.
@@ -21,11 +22,35 @@ permissions:
 
 concurrency:
   group: release-${{ github.event.pull_request.number }}
-  # A newer push to the release PR replaces the running version and preview jobs;
+  # A newer push to the release PR replaces the running check and preview jobs;
   # the tag job after a merge is never cancelled
   cancel-in-progress: ${{ github.event.action != 'closed' }}
 
 jobs:
+  # Required check on main: only release/x.y.z branches of this repository may
+  # be merged into main. Runs (and fails) for every other pull request.
+  source:
+    name: Source branch
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that the pull request comes from a release branch
+        env:
+          BRANCH: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REPO" != "$REPO" ]; then
+            echo "::error::Only branches of $REPO can be merged into main, not $HEAD_REPO."
+            exit 1
+          fi
+          if [[ ! "$BRANCH" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Only release/<major>.<minor>.<patch> branches can be merged into main, not '$BRANCH'. Release develop with 'npm run nx:release'."
+            exit 1
+          fi
+
+  # Required check on main: the release branch carries a new version.
+  # `npm run nx:release` commits it (chore(release): x.y.z); this job only checks.
   version:
     name: Version
     if: >-
@@ -33,11 +58,9 @@ jobs:
       startsWith(github.head_ref, 'release/') &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     outputs:
       version: ${{ steps.branch.outputs.version }}
-      sha: ${{ steps.commit.outputs.sha }}
+      sha: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Read the version from the branch name
         id: branch
@@ -50,17 +73,10 @@ jobs:
           fi
           echo "version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
 
-      # RELEASE_TOKEN is optional: a push made with the default GITHUB_TOKEN does not
-      # start new workflow runs, so CI would not run again on the version commit
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN || github.token }}
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
 
       - name: Check that the version is new
         env:
@@ -76,25 +92,18 @@ jobs:
             exit 1
           fi
 
-      - name: Set the version in package.json
-        id: commit
+      - name: Check package.json
         env:
           VERSION: ${{ steps.branch.outputs.version }}
-          BRANCH: ${{ github.head_ref }}
         run: |
-          CURRENT=$(node -p "require('./package.json').version")
-          if [ "$CURRENT" = "$VERSION" ]; then
-            echo "package.json is already at $VERSION"
-          else
-            npm version "$VERSION" --no-git-tag-version
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package.json package-lock.json
-            git commit -m "chore(release): $VERSION"
-            git push origin "HEAD:refs/heads/$BRANCH"
-            echo "::notice::Set the version to $VERSION ($CURRENT before)"
-          fi
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          for FILE in package.json package-lock.json; do
+            FOUND=$(node -p "require('./$FILE').version")
+            if [ "$FOUND" != "$VERSION" ]; then
+              echo "::error file=$FILE::$FILE has version $FOUND, not $VERSION. Create release branches with 'npm run nx:release', or commit 'npm version $VERSION --no-git-tag-version' on this branch."
+              exit 1
+            fi
+          done
+          echo "::notice::Releasing $VERSION"
 
   preview:
     name: Firebase preview
@@ -154,7 +163,7 @@ jobs:
         run: |
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
-            echo "::warning::package.json on main is $PACKAGE_VERSION, not $VERSION. Was the PR merged before the Version job finished?"
+            echo "::warning::package.json on main is $PACKAGE_VERSION, not $VERSION."
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

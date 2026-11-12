@@ -55,7 +55,7 @@ When you add or change an input of `App`, document it with a JSDoc comment (what
 
 ## Releases
 
-`npm run nx:release` (or the question on `git push`) asks whether to release and how (patch, minor, major), then creates and pushes `release/x.y.z`. The PR `release/x.y.z` → `main` gets the version commit and a Firebase preview; merging it tags `x.y.z` (the same as the `package.json` version) and creates a GitHub release. It works like the cv-angular host.
+`npm run nx:release` (or the question on `git push`) asks whether to release and how (patch, minor, major), then creates and pushes `release/x.y.z`. The release branch already contains the version commit. The PR `release/x.y.z` → `main` must pass its checks and gets a Firebase preview; merging it tags `x.y.z` (the same as the `package.json` version), creates a GitHub release and deploys live. `main` only accepts such release PRs (see the rulesets in [README.release-branches.md](README.release-branches.md)).
 
 ### Doing a release
 
@@ -73,9 +73,9 @@ Choose the version. For example, with `1.0.0` as the latest release:
 | 3) minor | `1.1.0`     | New, backwards-compatible features  |
 | 4) major | `2.0.0`     | Breaking changes or a big redesign  |
 
-Choosing patch, the script creates and pushes `release/1.0.1` from `develop` and offers to open the PR into `main` (with [`gh`](https://cli.github.com/)). Then:
+Choosing patch, the script creates and pushes `release/1.0.1` (`develop` plus the commit `chore(release): 1.0.1`) and offers to open the PR into `main` (with [`gh`](https://cli.github.com/)). Then:
 
-1. Wait for the PR's checks: **Version** commits `chore(release): 1.0.1` to the release branch, **Firebase preview** posts a preview link.
+1. Wait for the PR's required checks (**Source branch**, **Version** and **main**) to pass; **Firebase preview** posts a preview link.
 2. Merge the PR with **Create a merge commit**. CI tags `1.0.1`, creates the GitHub release and deploys live (`deploy-live.yml`).
 3. Bring `main` back into `develop`:
 
@@ -95,7 +95,7 @@ Deploys are automatic; you normally don't run any Firebase command yourself.
 
 | What                  | When                                                                    | How                                                                    |
 | --------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Preview channel       | Every pull request (release PRs into `main` after the version commit)   | `firebase-hosting-pull-request.yml`, `release.yml`                     |
+| Preview channel       | Every pull request                                                      | `firebase-hosting-pull-request.yml`, `release.yml`                     |
 | **Live** (production) | **Only** when a `release/x.y.z` PR is merged into `main`, after the tag | `release.yml` → [`deploy-live.yml`](.github/workflows/deploy-live.yml) |
 | Redeploy / roll back  | By hand, for an existing release tag                                    | _Actions → Deploy live → Run workflow_, enter the tag (e.g. `1.0.0`)   |
 
