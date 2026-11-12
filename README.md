@@ -57,7 +57,37 @@ When you add or change an input of `App`, document it with a JSDoc comment (what
 
 `npm run nx:release` (or the question on `git push`) asks whether to release and how (patch, minor, major), then creates and pushes `release/x.y.z`. The PR `release/x.y.z` → `main` gets the version commit and a Firebase preview; merging it tags `x.y.z` (the same as the `package.json` version) and creates a GitHub release. It works like the cv-angular host.
 
-How it works, step by step: see [README.release-branches.md](README.release-branches.md).
+### Doing a release
+
+On `develop`, with everything for the release merged and pushed:
+
+```bash
+npm run nx:release
+```
+
+Choose the version. For example, with `1.0.0` as the latest release:
+
+| Choice   | New version | When                                |
+| -------- | ----------- | ----------------------------------- |
+| 2) patch | `1.0.1`     | Only fixes (also CI, docs, tooling) |
+| 3) minor | `1.1.0`     | New, backwards-compatible features  |
+| 4) major | `2.0.0`     | Breaking changes or a big redesign  |
+
+Choosing patch, the script creates and pushes `release/1.0.1` from `develop` and offers to open the PR into `main` (with [`gh`](https://cli.github.com/)). Then:
+
+1. Wait for the PR's checks: **Version** commits `chore(release): 1.0.1` to the release branch, **Firebase preview** posts a preview link.
+2. Merge the PR with **Create a merge commit**. CI tags `1.0.1`, creates the GitHub release and deploys live (`deploy-live.yml`).
+3. Bring `main` back into `develop`:
+
+   ```bash
+   git switch develop && git pull
+   git merge origin/main
+   git push
+   ```
+
+A release branch is done once its PR is merged: don't push to it again. New work goes to `develop` and out with the next release.
+
+How it works in detail (branches, workflows, hotfixes, troubleshooting): see [README.release-branches.md](README.release-branches.md).
 
 ## Firebase hosting
 

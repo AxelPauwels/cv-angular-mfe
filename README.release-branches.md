@@ -114,7 +114,7 @@ Pushing more fixes reruns both jobs; the version commit is only made once. Run `
 
 ### 3. Merge
 
-Merge with **Create a merge commit** (not squash or rebase), so `main` and `develop` keep sharing commits. Then **Release / Tag and GitHub release** tags the merge commit and creates the GitHub release, and **Release / Deploy live** deploys that commit live. If tagging fails, nothing is deployed. You can delete the release branch; the tag keeps the version.
+Merge with **Create a merge commit** (not squash or rebase), so `main` and `develop` keep sharing commits. Then **Release / Tag and GitHub release** tags the merge commit and creates the GitHub release, and **Release / Deploy live** deploys that commit live. If tagging fails, nothing is deployed. After the merge the release branch is **done**: don't push to it again (a new PR from it would fail, because its version is already tagged). You can delete it; the tag keeps the version.
 
 ### 4. Back-merge main into develop
 
@@ -157,11 +157,12 @@ Then follow steps 2 to 4. The back-merge brings the fix into `develop`.
 
 ## Troubleshooting
 
-| Problem                                                          | Cause                                                  | Fix                                                                               |
-| ---------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `release/x.y.z already exists` in the prompt                     | That release branch was created before.                | Use that branch, or choose another version.                                       |
-| `Tag x.y.z already exists` on the PR                             | That version was released before.                      | Use the next version.                                                             |
-| `Version x.y.z must be higher than the latest release`           | A lower version than the last tag.                     | Use a higher version.                                                             |
-| `rejected ... (fetch first)` when you push to the release branch | The bot added the version commit.                      | `git pull`, then push.                                                            |
-| PR waits for checks after the version commit                     | Required checks and no `RELEASE_TOKEN`.                | Add `RELEASE_TOKEN`, or push any commit to the release branch yourself.           |
-| Warning `package.json on main is ..., not x.y.z` on the Tag job  | The PR was merged before the Version job had finished. | The tag is still made. Fix the version with a PR to `main`, or require the check. |
+| Problem                                                          | Cause                                                  | Fix                                                                                                     |
+| ---------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `release/x.y.z already exists` in the prompt                     | That release branch was created before.                | Use that branch, or choose another version.                                                             |
+| `Tag x.y.z already exists` on the PR                             | That version was released before.                      | Use the next version.                                                                                   |
+| New PR `release/x.y.z` → `main` after that release was merged    | Work was pushed to a release branch that is done.      | Close the PR. Make sure the work is on `develop`, then release it from there with `npm run nx:release`. |
+| `Version x.y.z must be higher than the latest release`           | A lower version than the last tag.                     | Use a higher version.                                                                                   |
+| `rejected ... (fetch first)` when you push to the release branch | The bot added the version commit.                      | `git pull`, then push.                                                                                  |
+| PR waits for checks after the version commit                     | Required checks and no `RELEASE_TOKEN`.                | Add `RELEASE_TOKEN`, or push any commit to the release branch yourself.                                 |
+| Warning `package.json on main is ..., not x.y.z` on the Tag job  | The PR was merged before the Version job had finished. | The tag is still made. Fix the version with a PR to `main`, or require the check.                       |
