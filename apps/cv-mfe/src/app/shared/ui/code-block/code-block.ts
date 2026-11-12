@@ -13,8 +13,27 @@ import {
 import { CodeBlockLanguage, loadLanguage } from './code-block.languages';
 
 const COPIED_FEEDBACK_MS = 2000;
+/**
+ * Source code passed to the code block: meant for a template literal
+ * (backticks), so multi-line code keeps its line breaks. Accepts any string.
+ */
 export type Snippet = `${string}`;
 
+/**
+ * Read-only, syntax-highlighted code with optional line numbers and a copy
+ * button. Highlighting uses highlight.js; the core and the grammar are
+ * lazy-loaded on first use.
+ *
+ * Colours are CSS custom properties on the element (`--code-block-bg`,
+ * `--code-block-fg`, `--code-block-border`, `--code-block-muted`,
+ * `--code-block-keyword`, `--code-block-string`, `--code-block-title`,
+ * `--code-block-type`, `--code-block-number`, `--code-block-comment`,
+ * `--code-block-tag`, `--code-block-font`), so a host can theme it.
+ *
+ * ```html
+ * <app-code-block [code]="source" language="json" [lineNumbers]="false" />
+ * ```
+ */
 @Component({
   selector: 'app-code-block',
   templateUrl: './code-block.html',
@@ -25,9 +44,13 @@ export type Snippet = `${string}`;
   encapsulation: ViewEncapsulation.None,
 })
 export class CodeBlock {
+  /** Code to show; surrounding blank lines and shared indentation are removed. */
   readonly code = input<Snippet>(``);
+  /** Highlighting grammar. */
   readonly language = input<CodeBlockLanguage>('typescript');
+  /** Shows the line-number gutter. */
   readonly lineNumbers = input(true, { transform: booleanAttribute });
+  /** Shows the copy-to-clipboard button. */
   readonly copyable = input(true, { transform: booleanAttribute });
 
   /** Code without surrounding blank lines and shared indentation. */

@@ -16,6 +16,7 @@ const LANGUAGE_LOADERS = {
   yaml: () => import('highlight.js/lib/languages/yaml'),
 } satisfies Record<string, () => Promise<{ default: LanguageFn }>>;
 
+/** Grammars the code block can highlight; `html` is an alias of `xml`. */
 export type CodeBlockLanguage = keyof typeof LANGUAGE_LOADERS | 'html';
 
 /** `html` is registered by highlight.js as an alias of the `xml` grammar. */
