@@ -23,14 +23,15 @@
     "serve": {
       "continuous": true,
       "readyWhen": {
-        "url": "http://localhost:4201"
+        "url": "http://localhost:4300"
       },
       "executor": "@angular-architects/native-federation:build",
       "options": {
         "target": "cv-mfe:serve-original:development",
         "rebuildDelay": 0,
         "dev": true,
-        "port": 0
+        "port": 4300,
+        "outputPath": "dist/apps/cv-mfe-dev"
       }
     },
     "test": {
@@ -109,7 +110,7 @@
         }
       },
       "options": {
-        "port": 4201
+        "port": 4300
       }
     }
   }

@@ -35,6 +35,12 @@ More info:
 - commitlint docs: https://commitlint.js.org/
 - Conventional Commits spec: https://www.conventionalcommits.org/en/v1.0.0-beta.4/
 
+## Releases
+
+`npm run nx:release` (or the question on `git push`) asks whether to release and how (patch, minor, major), then creates and pushes `release/x.y.z`. The PR `release/x.y.z` → `main` gets the version commit and a Firebase preview; merging it tags `x.y.z` (the same as the `package.json` version) and creates a GitHub release. It works like the cv-angular host.
+
+How it works, step by step: see [README.release-branches.md](README.release-branches.md).
+
 ## Deploy Firebase
 
 - To deploy to firebase, ensure you are logged in. cmd: firebase login --reauth

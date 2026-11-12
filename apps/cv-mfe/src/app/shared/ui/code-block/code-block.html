@@ -1,0 +1,24 @@
+<!-- .code-block-pre and .code-block-gutter are grid/flex containers, so the
+     whitespace-only text between their children is not rendered. -->
+<div class="code-block">
+  @if (copyable()) {
+  <button class="code-block-copy" type="button" (click)="copy()">
+    {{ copied() ? 'Copied' : 'Copy' }}
+  </button>
+  }
+
+  <pre class="code-block-pre" [class.code-block-pre-numbered]="lineNumbers()">
+    @if (lineNumbers()) {
+      <span class="code-block-gutter" aria-hidden="true">
+        @for (line of lines(); track line) {
+          <span>{{ line }}</span>
+        }
+      </span>
+    }
+    @if (highlighted.hasValue()) {
+      <code class="code-block-code hljs" [innerHTML]="highlighted.value()"></code>
+    } @else {
+      <code class="code-block-code hljs">{{ normalizedCode() }}</code>
+    }
+  </pre>
+</div>

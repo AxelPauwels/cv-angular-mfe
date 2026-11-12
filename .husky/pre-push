@@ -1,0 +1,3 @@
+# Ask whether to release this push (see "Releases" in README.md).
+# Skip with: SKIP_VERSION_PROMPT=1 git push
+node scripts/release.mjs --hook "$1"

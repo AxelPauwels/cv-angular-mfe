@@ -23,7 +23,15 @@ export default withNativeFederation({
 
   //sharedMappings: mappingsFromWorkspace({ singleton: true }).filter(['@my-org/*']).get(),
 
-  skip: ['rxjs/ajax', 'rxjs/fetch', 'rxjs/testing', 'rxjs/webSocket'],
+  skip: [
+    'rxjs/ajax',
+    'rxjs/fetch',
+    'rxjs/testing',
+    'rxjs/webSocket',
+    // Bundled locally: its language grammars are lazy-loaded deep imports that
+    // federation would externalise without providing an import-map entry.
+    /^highlight\.js(\/|$)/,
+  ],
 
   // Please read our docs about configuring native federation:
   // https://native-federation.com/docs/v4/angular-adapter/configuration/

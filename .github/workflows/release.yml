@@ -1,0 +1,167 @@
+# Release flow for pull requests from release/<major>.<minor>.<patch> into main.
+# See "Releases" in README.md. `npm run nx:release` (or the pre-push prompt)
+# creates and pushes the release branch.
+#
+# - PR opened or updated: set the version from the branch name in package.json,
+#   commit it to the release branch and deploy a Firebase preview of that commit.
+# - PR merged: tag the merge commit on main with the version and create a GitHub release.
+#   The live deploy itself is done by firebase-hosting-merge.yml (push to main).
+
+name: Release
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, reopened, synchronize, ready_for_review, closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.pull_request.number }}
+  # A newer push to the release PR replaces the running version and preview jobs;
+  # the tag job after a merge is never cancelled
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
+
+jobs:
+  version:
+    name: Version
+    if: >-
+      github.event.action != 'closed' &&
+      startsWith(github.head_ref, 'release/') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.branch.outputs.version }}
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - name: Read the version from the branch name
+        id: branch
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          if [[ ! "$BRANCH" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::Branch '$BRANCH' must be named release/<major>.<minor>.<patch>, for example release/1.0.0"
+            exit 1
+          fi
+          echo "version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+
+      # RELEASE_TOKEN is optional: a push made with the default GITHUB_TOKEN does not
+      # start new workflow runs, so CI would not run again on the version commit
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Check that the version is new
+        env:
+          VERSION: ${{ steps.branch.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            echo "::error::Tag $VERSION already exists. Use a new release branch, for example release/<next version>."
+            exit 1
+          fi
+          LATEST=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n1)
+          if [ -n "$LATEST" ] && [ "$(printf '%s\n%s\n' "$LATEST" "$VERSION" | sort -V | tail -n1)" != "$VERSION" ]; then
+            echo "::error::Version $VERSION must be higher than the latest release $LATEST."
+            exit 1
+          fi
+
+      - name: Set the version in package.json
+        id: commit
+        env:
+          VERSION: ${{ steps.branch.outputs.version }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          if [ "$CURRENT" = "$VERSION" ]; then
+            echo "package.json is already at $VERSION"
+          else
+            npm version "$VERSION" --no-git-tag-version
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package.json package-lock.json
+            git commit -m "chore(release): $VERSION"
+            git push origin "HEAD:refs/heads/$BRANCH"
+            echo "::notice::Set the version to $VERSION ($CURRENT before)"
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  preview:
+    name: Firebase preview
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    steps:
+      # The version commit, so the preview is exactly what will be released
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run build:production
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CV_ANGULAR_MFE }}
+          projectId: cv-angular-mfe
+
+  tag:
+    name: Tag and GitHub release
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Read the version from the branch name
+        id: branch
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          if [[ ! "$BRANCH" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::Branch '$BRANCH' must be named release/<major>.<minor>.<patch>, for example release/1.0.0"
+            exit 1
+          fi
+          echo "version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - name: Tag the merge commit
+        env:
+          VERSION: ${{ steps.branch.outputs.version }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
+            echo "::warning::package.json on main is $PACKAGE_VERSION, not $VERSION. Was the PR merged before the Version job finished?"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "refs/tags/$VERSION"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.branch.outputs.version }}
+        run: gh release create "$VERSION" --verify-tag --title "$VERSION" --generate-notes --latest

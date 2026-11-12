@@ -9,7 +9,10 @@ permissions:
   pull-requests: write
 jobs:
   build_and_preview:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    # Release PRs into main get their preview from release.yml, after the version commit
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !(github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

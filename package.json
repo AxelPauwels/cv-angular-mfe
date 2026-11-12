@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "start": "nx serve cv-mfe --port=4300",
+    "start": "nx serve cv-mfe",
     "test": "nx run-many --target=test --all",
     "test:watch": "nx run-many --target=test --all --watch=true",
     "test:ci": "nx run-many --target=test --all --configuration=ci",
@@ -21,13 +21,13 @@
     "nx:graph": "nx graph",
     "prepare": "husky",
     "build:production": "sh scripts/build-production.sh",
+    "nx:release": "node scripts/release.mjs",
     "firebase:login": "npx firebase login",
     "firebase:link-project": "npx firebase use --add",
     "firebase:deploy": "npx firebase deploy --only hosting",
     "firebase:deploy-preview": "npx firebase hosting:channel:deploy preview",
     "firebase:emulate": "firebase emulators:start",
-    "firebase:github": "npx firebase init hosting:github",
-    "build-and-deploy": "npm run build:production && npm run firebase:deploy"
+    "firebase:link-github": "npx firebase init hosting:github"
   },
   "lint-staged": {
     "*.{css,scss}": [
@@ -51,6 +51,7 @@
     "@ngrx/signals": "^22.0.1",
     "@softarc/native-federation-node": "^2.0.10",
     "es-module-shims": "^1.5.12",
+    "highlight.js": "^11.12.0",
     "rxjs": "~7.8.0"
   },
   "devDependencies": {
