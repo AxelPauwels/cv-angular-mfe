@@ -27,6 +27,16 @@
 # Logs
 npm-debug.log*
 
+# Firebase CLI: debug logs can contain access tokens; never commit them
+firebase-debug.log*
+firebase-debug.*.log*
+ui-debug.log*
+database-debug.log*
+firestore-debug.log*
+pubsub-debug.log*
+# Local deploy cache
+.firebase/
+
 # IDEs and editors
 /.idea
 .project
