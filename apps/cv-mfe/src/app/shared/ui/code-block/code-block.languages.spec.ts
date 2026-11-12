@@ -1,14 +1,34 @@
-import { loadLanguage } from './code-block.languages';
+import { CodeBlockLanguage, loadLanguage } from './code-block.languages';
 
 describe('loadLanguage', () => {
-  it('loads a grammar by its name', async () => {
-    const { name, grammar } = await loadLanguage('typescript');
-    expect(name).toBe('typescript');
+  it.each<CodeBlockLanguage>([
+    'typescript',
+    'javascript',
+    'json',
+    'xml',
+    'css',
+    'scss',
+    'bash',
+    'yaml',
+  ])('loads the %s grammar under its own name', async (language) => {
+    // Arrange: the language comes from the table
+
+    // Act
+    const { name, grammar } = await loadLanguage(language);
+
+    // Assert
+    expect(name).toBe(language);
     expect(grammar).toBeTypeOf('function');
   });
 
   it('resolves html to the xml grammar', async () => {
-    const { name } = await loadLanguage('html');
+    // Arrange
+    const language: CodeBlockLanguage = 'html';
+
+    // Act
+    const { name } = await loadLanguage(language);
+
+    // Assert
     expect(name).toBe('xml');
   });
 });

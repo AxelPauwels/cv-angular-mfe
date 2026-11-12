@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { booleanAttribute, Component, input } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { CodeBlock } from './shared/ui/code-block/code-block';
+import { CodeBlock, Snippet } from './shared/ui/code-block/code-block';
+import { CodeBlockLanguage } from './shared/ui/code-block/code-block.languages';
 
 @Component({
   imports: [RouterModule, CodeBlock],
@@ -9,14 +10,9 @@ import { CodeBlock } from './shared/ui/code-block/code-block';
   styleUrl: './app.scss',
 })
 export class App {
-  protected title = 'cv-mfe';
-
-  protected readonly snippet = `
-    import { Component, input } from '@angular/core';
-
-    @Component({ selector: 'app-greeting', template: '<p>Hello {{ name() }}</p>' })
-    export class Greeting {
-      readonly name = input<string>('world');
-    }
-  `;
+  protected title = 'cv-micro-frontend';
+  readonly snippet = input<Snippet>(``);
+  readonly language = input<CodeBlockLanguage>('typescript');
+  readonly lineNumbers = input(true, { transform: booleanAttribute });
+  readonly copyable = input(true, { transform: booleanAttribute });
 }

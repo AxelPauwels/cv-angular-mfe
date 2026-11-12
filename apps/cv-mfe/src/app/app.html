@@ -1,2 +1,7 @@
-<app-code-block [code]="snippet" language="typescript"></app-code-block>
+<app-code-block
+  [code]="snippet()"
+  [language]="language()"
+  [lineNumbers]="lineNumbers()"
+  [copyable]="copyable()">
+</app-code-block>
 <router-outlet></router-outlet>

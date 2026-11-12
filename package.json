@@ -21,6 +21,7 @@
     "nx:graph": "nx graph",
     "prepare": "husky",
     "build:production": "sh scripts/build-production.sh",
+    "nx:release": "node scripts/release.mjs",
     "firebase:login": "npx firebase login",
     "firebase:link-project": "npx firebase use --add",
     "firebase:deploy": "npx firebase deploy --only hosting",

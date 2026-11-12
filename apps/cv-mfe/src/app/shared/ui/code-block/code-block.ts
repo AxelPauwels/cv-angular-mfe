@@ -13,6 +13,7 @@ import {
 import { CodeBlockLanguage, loadLanguage } from './code-block.languages';
 
 const COPIED_FEEDBACK_MS = 2000;
+export type Snippet = `${string}`;
 
 @Component({
   selector: 'app-code-block',
@@ -24,7 +25,7 @@ const COPIED_FEEDBACK_MS = 2000;
   encapsulation: ViewEncapsulation.None,
 })
 export class CodeBlock {
-  readonly code = input<string>('');
+  readonly code = input<Snippet>(``);
   readonly language = input<CodeBlockLanguage>('typescript');
   readonly lineNumbers = input(true, { transform: booleanAttribute });
   readonly copyable = input(true, { transform: booleanAttribute });
