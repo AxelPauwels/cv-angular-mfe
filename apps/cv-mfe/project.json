@@ -18,7 +18,8 @@
           "dev": true
         }
       },
-      "defaultConfiguration": "production"
+      "defaultConfiguration": "production",
+      "dependsOn": ["docs"]
     },
     "serve": {
       "continuous": true,
@@ -32,12 +33,35 @@
         "dev": true,
         "port": 4300,
         "outputPath": "dist/apps/cv-mfe-dev"
-      }
+      },
+      "dependsOn": ["docs"]
     },
     "test": {
       "executor": "@angular/build:unit-test",
       "options": {
         "watch": false
+      }
+    },
+    "docs": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/src/**/*.ts",
+        "!{projectRoot}/src/**/*.spec.ts",
+        "{projectRoot}/src/**/*.html",
+        "{projectRoot}/README.md",
+        "{projectRoot}/.compodocrc.json",
+        "{projectRoot}/tsconfig.app.json",
+        "{workspaceRoot}/tools/compodoc/**/*"
+      ],
+      "outputs": ["{workspaceRoot}/dist/compodoc/cv-mfe"],
+      "options": {
+        "commands": [
+          "cd apps/cv-mfe && compodoc -c .compodocrc.json",
+          "node tools/compodoc/strip-empty-examples.mjs dist/compodoc/cv-mfe"
+        ],
+        "parallel": false,
+        "cwd": "{workspaceRoot}"
       }
     },
     "serve-static": {
@@ -66,6 +90,11 @@
           {
             "glob": "**/*",
             "input": "apps/cv-mfe/public"
+          },
+          {
+            "glob": "**/*",
+            "input": "dist/compodoc/cv-mfe",
+            "output": "api"
           }
         ],
         "styles": ["apps/cv-mfe/src/styles.scss"],
@@ -111,7 +140,8 @@
       },
       "options": {
         "port": 4300
-      }
+      },
+      "dependsOn": ["docs"]
     }
   }
 }

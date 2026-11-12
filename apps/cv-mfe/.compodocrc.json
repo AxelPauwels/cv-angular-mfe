@@ -1,0 +1,13 @@
+{
+  "$schema": "../../node_modules/@compodoc/compodoc/src/config/schema.json",
+  "name": "cv-mfe API",
+  "tsconfig": "tsconfig.app.json",
+  "output": "../../dist/compodoc/cv-mfe",
+  "hideGenerator": true,
+  "disableCoverage": true,
+  "disablePrivate": true,
+  "disableInternal": true,
+  "disableLifeCycleHooks": true,
+  "silent": true,
+  "disableDependencies": true
+}
