@@ -1,0 +1,100 @@
+# Tags releases. The version itself is chosen locally when pushing
+# (`npm run nx:release` or the pre-push prompt), which commits
+# `chore(release): x.y.z`. See "Releases" in README.md.
+#
+# - PR into main: report whether merging it releases a new version.
+# - Push to main (a merge, or a direct push): when package.json holds a version
+#   that has no tag yet, tag that commit and create a GitHub release.
+#   The live deploy itself is done by firebase-hosting-merge.yml.
+
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  # Never cancel a run that may be tagging main
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check version
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Compare package.json with the latest release
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          LATEST=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          if [ "$VERSION" = "0.0.0" ] || git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            echo "::notice::$VERSION is not a new version; merging this PR does not create a release. Run 'npm run nx:release' on the branch to version it."
+          elif [ -n "$LATEST" ] && [ "$(printf '%s\n%s\n' "$LATEST" "$VERSION" | sort -V | tail -n1)" != "$VERSION" ]; then
+            echo "::error::package.json version $VERSION is lower than the latest release $LATEST."
+            exit 1
+          else
+            echo "::notice::Merging this PR releases $VERSION (latest release: ${LATEST:-none})."
+          fi
+
+  tag:
+    name: Tag and GitHub release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Read the version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$VERSION" = "0.0.0" ]; then
+            echo "::notice::Not versioned yet (0.0.0); nothing to release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            echo "::notice::$VERSION is already tagged; nothing to release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          LATEST=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          if [ -n "$LATEST" ] && [ "$(printf '%s\n%s\n' "$LATEST" "$VERSION" | sort -V | tail -n1)" != "$VERSION" ]; then
+            echo "::error::package.json version $VERSION is lower than the latest release $LATEST; not tagging."
+            exit 1
+          fi
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
+      - name: Tag the commit
+        if: steps.version.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "refs/tags/$VERSION"
+
+      - name: Create the GitHub release
+        if: steps.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "$VERSION" --verify-tag --title "$VERSION" --generate-notes --latest
