@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // Asks whether to release the code being pushed and, if so, creates and pushes
-// a `release/x.y.z` branch from the current commit. From there GitHub takes
-// over (.github/workflows/release.yml): the release PR into main gets the
-// version commit and a preview; merging it tags `x.y.z`. See "Releases" in
-// README.md.
+// a `release/x.y.z` branch: the current commit plus `chore(release): x.y.z`,
+// which sets the version in package.json / package-lock.json. The current
+// branch is not touched (the commit is made in a temporary worktree). From
+// there GitHub takes over (.github/workflows/release.yml): the release PR into
+// main is checked and previewed; merging it tags `x.y.z` and deploys live.
+// See "Releases" in README.md.
 //
 //   node scripts/release.mjs                   `npm run nx:release`
 //   node scripts/release.mjs --hook <remote>   .husky/pre-push; the push goes on
@@ -11,7 +13,9 @@
 // Set SKIP_VERSION_PROMPT=1 to push without being asked.
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { openSync, readFileSync } from 'node:fs';
+import { mkdtempSync, openSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { ReadStream, WriteStream } from 'node:tty';
 
@@ -56,6 +60,35 @@ function bump(version, type) {
     minor: `${major}.${minor + 1}.0`,
     patch: `${major}.${minor}.${patch + 1}`,
   }[type];
+}
+
+/**
+ * Creates `releaseBranch` at HEAD plus a `chore(release): <version>` commit,
+ * in a temporary worktree so the checked-out branch and its files stay as
+ * they are.
+ */
+function createReleaseBranch(releaseBranch, version) {
+  const dir = mkdtempSync(join(tmpdir(), 'release-'));
+  try {
+    git('worktree', 'add', '--quiet', '-b', releaseBranch, dir, 'HEAD');
+    execFileSync('npm', ['version', version, '--no-git-tag-version'], {
+      cwd: dir,
+      stdio: 'ignore',
+    });
+    git('-C', dir, 'add', 'package.json', 'package-lock.json');
+    // --no-verify: the message is fixed and only the version fields changed
+    git(
+      '-C',
+      dir,
+      'commit',
+      '--quiet',
+      '--no-verify',
+      '-m',
+      `chore(release): ${version}`
+    );
+  } finally {
+    tryGit('worktree', 'remove', '--force', dir);
+  }
 }
 
 /** `owner/repo` of a GitHub remote URL (ssh, ssh alias or https). */
@@ -178,10 +211,19 @@ async function main() {
       return 1;
     }
 
-    git('branch', releaseBranch, 'HEAD');
+    const from = git('rev-parse', '--short', 'HEAD');
+    try {
+      createReleaseBranch(releaseBranch, next);
+    } catch (error) {
+      tryGit('branch', '-D', releaseBranch);
+      say(
+        `  Creating ${releaseBranch} failed: ${error.message.trim()}${stopped}`
+      );
+      return 1;
+    }
     say();
     say(
-      `  Created ${releaseBranch} from ${branch} (${git('rev-parse', '--short', 'HEAD')}).`
+      `  Created ${releaseBranch}: ${branch} (${from}) + "chore(release): ${next}".`
     );
     const push = spawnSync('git', ['push', '-u', remote, releaseBranch], {
       stdio: ['ignore', terminal.outputFd, terminal.outputFd],
@@ -195,10 +237,10 @@ async function main() {
 
     const repo = githubRepo();
     say();
-    say(`  Pushed ${releaseBranch}. Next: open a PR into main; CI then`);
     say(
-      `  commits version ${next}, deploys a preview and tags ${next} on merge.`
+      `  Pushed ${releaseBranch}. Next: open a PR into main; CI checks it and`
     );
+    say(`  deploys a preview. Merging tags ${next} and deploys it live.`);
     if (repo) {
       say(
         `  https://github.com/${repo}/compare/main...${releaseBranch}?expand=1`
@@ -224,7 +266,7 @@ async function main() {
             '--title',
             `Release ${next}`,
             '--body',
-            `Release ${next}. CI sets the version in package.json; merging tags ${next}.`,
+            `Release ${next}. Merging tags ${next}, creates the GitHub release and deploys it live.`,
           ],
           { stdio: ['ignore', terminal.outputFd, terminal.outputFd] }
         );

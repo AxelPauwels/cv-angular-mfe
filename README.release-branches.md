@@ -1,6 +1,6 @@
 # Release branches
 
-How the cv-mfe remote goes from `develop` to production, and how it gets its version and git tag. It works like the [cv-angular](https://github.com/AxelPauwels/cv-angular) host, plus a prompt that creates the release branch for you.
+How the cv-mfe remote goes from `develop` to production, and how it gets its version and git tag. It works like the [cv-angular](https://github.com/AxelPauwels/cv-angular) host, with two differences: a prompt creates the release branch for you, and the version commit is made by that prompt instead of by a CI bot, so every commit on a release PR gets its checks (which `main` requires).
 
 ## TL;DR
 
@@ -10,7 +10,8 @@ How the cv-mfe remote goes from `develop` to production, and how it gets its ver
 npm run nx:release
 #    `git push` on develop asks the same question
 
-# 2. The PR release/x.y.z → main gets the version commit and a Firebase preview
+# 2. The PR release/x.y.z → main is checked (Source branch, Version, CI)
+#    and gets a Firebase preview
 
 # 3. Merge the PR (with a merge commit)
 #    CI tags the merge commit x.y.z, creates a GitHub release and deploys live
@@ -58,14 +59,21 @@ The version follows [semantic versioning](https://semver.org/): `major.minor.pat
 Choosing a version:
 
 1. fetches the tags and checks that the version is higher than the latest release and that `release/x.y.z` doesn't exist yet;
-2. creates `release/x.y.z` from your current commit and pushes it;
+2. creates `release/x.y.z` from your current commit plus a `chore(release): x.y.z` commit that sets the version in `package.json` and `package-lock.json` (made in a temporary worktree: your checked-out branch and files are not touched), and pushes it;
 3. prints the link to open the PR into `main`, and offers to open it with [`gh`](https://cli.github.com/) when that is installed.
 
-Nothing is committed locally: the version commit and the tag are made by CI. With `git push`, your own push carries on normally after the release branch is pushed.
+The tag is made by CI after the merge. With `git push`, your own push carries on normally after the release branch is pushed.
 
 The question is skipped when you push a `release/*` branch, tags, or a branch you haven't checked out; in CI and in git GUIs without a terminal; and with `SKIP_VERSION_PROMPT=1 git push` (or `git push --no-verify`, which skips all hooks). Ctrl+C stops the push.
 
-You can still create a release branch by hand (`git switch -c release/1.2.0 && git push -u origin release/1.2.0`); CI treats it the same.
+You can still create a release branch by hand; it must contain the version commit, or the **Version** check fails:
+
+```bash
+git switch -c release/1.2.0
+npm version 1.2.0 --no-git-tag-version
+git commit -am "chore(release): 1.2.0"
+git push -u origin release/1.2.0
+```
 
 ## What runs where
 
@@ -74,8 +82,9 @@ You can still create a release branch by hand (`git switch -c release/1.2.0 && g
 | Push to `develop`, `release/**` or `main`   | [`ci.yml`](.github/workflows/ci.yml)                                                                    | Format check, lint, test, build, typecheck and e2e of the affected projects.           |
 | Any pull request                            | [`ci.yml`](.github/workflows/ci.yml)                                                                    | Same checks.                                                                           |
 | PR `develop` → `release/*` (or any other)   | [`firebase-hosting-pull-request.yml`](.github/workflows/firebase-hosting-pull-request.yml)              | Firebase preview channel, link posted on the PR.                                       |
-| PR `release/x.y.z` → `main`, opened/updated | [`release.yml`](.github/workflows/release.yml) → **Version**                                            | Checks the version, sets it in `package.json`, commits `chore(release): x.y.z`.        |
-| PR `release/x.y.z` → `main`, opened/updated | [`release.yml`](.github/workflows/release.yml) → **Firebase preview**                                   | Builds the version commit and deploys it to a preview channel.                         |
+| Any PR into `main`, opened/updated          | [`release.yml`](.github/workflows/release.yml) → **Source branch**                                      | Fails unless the PR comes from `release/x.y.z` in this repository. Required on `main`. |
+| PR `release/x.y.z` → `main`, opened/updated | [`release.yml`](.github/workflows/release.yml) → **Version**                                            | Checks that the version is new and that `package.json` has it. Required on `main`.     |
+| PR `release/x.y.z` → `main`, opened/updated | [`release.yml`](.github/workflows/release.yml) → **Firebase preview**                                   | Builds the PR's latest commit and deploys it to a preview channel.                     |
 | PR `release/x.y.z` → `main`, merged         | [`release.yml`](.github/workflows/release.yml) → **Tag and GitHub release**                             | Tags the merge commit `x.y.z` and creates a GitHub release with notes.                 |
 | PR `release/x.y.z` → `main`, merged         | [`release.yml`](.github/workflows/release.yml) → [`deploy-live.yml`](.github/workflows/deploy-live.yml) | After the tag: production build of the merge commit, deployed to the **live** channel. |
 | By hand: _Actions → Deploy live_            | [`deploy-live.yml`](.github/workflows/deploy-live.yml)                                                  | Redeploys an existing release tag live, for example to roll back.                      |
@@ -84,21 +93,23 @@ You can still create a release branch by hand (`git switch -c release/1.2.0 && g
 
 ### Why the tag is made on merge, not when the branch is created
 
-The version is set as soon as the PR is opened, so the preview shows exactly what will be released. The **tag** waits until the merge because:
+The version is set as soon as the release branch is created, so the preview shows exactly what will be released. The **tag** waits until the merge because:
 
 - a tag must point at the code that actually went live; fixes pushed to the release branch later would otherwise not be in the tagged commit;
 - a PR that is closed without merging would leave a tag for a release that never happened;
 - tags are hard to move once someone has fetched them.
 
-### Checks done by the Version job
+### Checks on a PR into main
 
-The job fails, with a message on the PR, when:
+All three are required by the `main` ruleset; the PR can't be merged until they pass.
 
-- the branch name is not `release/<major>.<minor>.<patch>`;
-- a tag with that version already exists;
-- the version is not higher than the latest release tag.
+| Check             | Fails when                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Source branch** | The PR doesn't come from a `release/<major>.<minor>.<patch>` branch of this repository (for example `develop` → `main`, or a fork).                    |
+| **Version**       | A tag with that version already exists, the version isn't higher than the latest release, or `package.json` / `package-lock.json` has another version. |
+| **main** (CI)     | Format check, lint, test, build, typecheck or e2e fails.                                                                                               |
 
-Fix it by creating a branch with the right name, opening a new PR and closing the old one. Tags of npm packages (`name@x.y.z`, as in cv-angular) are ignored: app releases use plain version tags.
+For a wrong branch name or an already released version, create a new release branch with `npm run nx:release`, open a new PR and close the old one. For a version mismatch, commit `npm version x.y.z --no-git-tag-version` on the release branch. Tags of npm packages (`name@x.y.z`, as in cv-angular) are ignored: app releases use plain version tags.
 
 ## Step by step
 
@@ -108,13 +119,13 @@ On `develop`, run `npm run nx:release` (or push and answer the question). From n
 
 ### 2. The release PR
 
-Open the PR `release/x.y.z` → `main` (the prompt can do it). Within a minute, **Release / Version** commits `chore(release): x.y.z` as `github-actions[bot]` to the release branch, and **Release / Firebase preview** builds that commit and posts the preview link on the PR.
+Open the PR `release/x.y.z` → `main` (the prompt can do it). **Source branch**, **Version** and **CI** check it, and **Release / Firebase preview** builds it and posts the preview link on the PR.
 
-Pushing more fixes reruns both jobs; the version commit is only made once. Run `git pull` on your local release branch before pushing again, because the bot added a commit.
+Pushing more fixes to the release branch reruns all of them.
 
 ### 3. Merge
 
-Merge with **Create a merge commit** (not squash or rebase), so `main` and `develop` keep sharing commits. Then **Release / Tag and GitHub release** tags the merge commit and creates the GitHub release, and **Release / Deploy live** deploys that commit live. If tagging fails, nothing is deployed. You can delete the release branch; the tag keeps the version.
+Merge with **Create a merge commit** (not squash or rebase), so `main` and `develop` keep sharing commits. Then **Release / Tag and GitHub release** tags the merge commit and creates the GitHub release, and **Release / Deploy live** deploys that commit live. If tagging fails, nothing is deployed. After the merge the release branch is **done**: don't push to it again (a new PR from it would fail, because its version is already tagged). You can delete it; the tag keeps the version.
 
 ### 4. Back-merge main into develop
 
@@ -140,28 +151,27 @@ Then follow steps 2 to 4. The back-merge brings the fix into `develop`.
 
 ## One-time repository setup
 
-- **Actions permissions**: _Settings → Actions → General → Workflow permissions_ must not block the workflows' `contents: write`. Choose _Read and write permissions_ if the Version or Tag job fails with `403`.
+- **Actions permissions**: _Settings → Actions → General → Workflow permissions_ must not block the Tag job's `contents: write` (it pushes the tag). Choose _Read and write permissions_ if it fails with `403`.
 - **Secret** used by the deploys: `FIREBASE_SERVICE_ACCOUNT_CV_ANGULAR_MFE`.
 - **Rulesets** (_Settings → Rules → Rulesets_), already set up:
 
-  | Ruleset            | Applies to     | Rules                                                                                                                     |
-  | ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------- |
-  | `main`             | default branch | Pull request required (0 approvals, so you can merge your own), merge commits only, no force push or deletion. No bypass. |
-  | `develop`          | `develop`      | No force push or deletion.                                                                                                |
-  | `release branches` | `release/**`   | No force push, so the bot's version commit can't be overwritten. Deleting after the merge is allowed.                     |
-  | `release tags`     | tags `*.*.*`   | Tags can't be moved or deleted. Creating them (by the Tag job) is allowed.                                                |
+  | Ruleset            | Applies to   | Rules                                                                                                                                                                                                       |
+  | ------------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `main`             | `main`       | Pull request required (0 approvals, so you can merge your own), merge commits only, required checks **Source branch**, **Version** and **main**, no force push or deletion. No bypass, also not for admins. |
+  | `develop`          | `develop`    | No force push or deletion.                                                                                                                                                                                  |
+  | `release branches` | `release/**` | No force push, so reviewed commits can't be rewritten. Deleting after the merge is allowed.                                                                                                                 |
+  | `release tags`     | tags `*.*.*` | Tags can't be moved or deleted. Creating them (by the Tag job) is allowed.                                                                                                                                  |
 
-  Required status checks are deliberately **not** on `main` yet: without `RELEASE_TOKEN` (below) the bot's version commit gets no checks, so every release PR would wait forever. After adding the token, add a _Require status checks to pass_ rule to the `main` ruleset with `main` (the CI job) and `Version`. Requiring `Version` also means only `release/*` PRs can be merged into `main`.
-
-- `RELEASE_TOKEN` (needed before requiring checks): a push with the default `GITHUB_TOKEN` [doesn't start new workflow runs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow), so `CI` doesn't rerun on the bot's version commit. With required checks on `main` the PR then waits forever. Add a fine-grained token for this repository with **Contents: Read and write** as `RELEASE_TOKEN`; the Version job uses it automatically.
+  Together they mean: nothing reaches `main` except a merged `release/x.y.z` PR whose checks all passed, and only that merge is tagged and deployed live.
 
 ## Troubleshooting
 
-| Problem                                                          | Cause                                                  | Fix                                                                               |
-| ---------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `release/x.y.z already exists` in the prompt                     | That release branch was created before.                | Use that branch, or choose another version.                                       |
-| `Tag x.y.z already exists` on the PR                             | That version was released before.                      | Use the next version.                                                             |
-| `Version x.y.z must be higher than the latest release`           | A lower version than the last tag.                     | Use a higher version.                                                             |
-| `rejected ... (fetch first)` when you push to the release branch | The bot added the version commit.                      | `git pull`, then push.                                                            |
-| PR waits for checks after the version commit                     | Required checks and no `RELEASE_TOKEN`.                | Add `RELEASE_TOKEN`, or push any commit to the release branch yourself.           |
-| Warning `package.json on main is ..., not x.y.z` on the Tag job  | The PR was merged before the Version job had finished. | The tag is still made. Fix the version with a PR to `main`, or require the check. |
+| Problem                                                         | Cause                                                               | Fix                                                                                                     |
+| --------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `release/x.y.z already exists` in the prompt                    | That release branch was created before.                             | Use that branch, or choose another version.                                                             |
+| `Tag x.y.z already exists` on the PR                            | That version was released before.                                   | Use the next version.                                                                                   |
+| New PR `release/x.y.z` → `main` after that release was merged   | Work was pushed to a release branch that is done.                   | Close the PR. Make sure the work is on `develop`, then release it from there with `npm run nx:release`. |
+| `Version x.y.z must be higher than the latest release`          | A lower version than the last tag.                                  | Use a higher version.                                                                                   |
+| **Source branch** fails                                         | The PR isn't from `release/x.y.z` (for example `develop` → `main`). | Close it and release with `npm run nx:release`.                                                         |
+| **Version**: `package.json has version …, not x.y.z`            | The release branch has no version commit (created by hand).         | Commit `npm version x.y.z --no-git-tag-version` on the release branch.                                  |
+| Warning `package.json on main is ..., not x.y.z` on the Tag job | The PR was merged before the Version job had finished.              | The tag is still made. Fix the version with a PR to `main`, or require the check.                       |
