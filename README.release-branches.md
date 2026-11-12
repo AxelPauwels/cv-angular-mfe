@@ -69,15 +69,18 @@ You can still create a release branch by hand (`git switch -c release/1.2.0 && g
 
 ## What runs where
 
-| Event                                       | Workflow                                                                                   | What it does                                                                    |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| Push to `develop`, `release/**` or `main`   | [`ci.yml`](.github/workflows/ci.yml)                                                       | Format check, lint, test, build, typecheck and e2e of the affected projects.    |
-| Any pull request                            | [`ci.yml`](.github/workflows/ci.yml)                                                       | Same checks.                                                                    |
-| PR `develop` → `release/*` (or any other)   | [`firebase-hosting-pull-request.yml`](.github/workflows/firebase-hosting-pull-request.yml) | Firebase preview channel, link posted on the PR.                                |
-| PR `release/x.y.z` → `main`, opened/updated | [`release.yml`](.github/workflows/release.yml) → **Version**                               | Checks the version, sets it in `package.json`, commits `chore(release): x.y.z`. |
-| PR `release/x.y.z` → `main`, opened/updated | [`release.yml`](.github/workflows/release.yml) → **Firebase preview**                      | Builds the version commit and deploys it to a preview channel.                  |
-| PR `release/x.y.z` → `main`, merged         | [`release.yml`](.github/workflows/release.yml) → **Tag and GitHub release**                | Tags the merge commit `x.y.z` and creates a GitHub release with notes.          |
-| Push to `main` (the merge)                  | [`firebase-hosting-merge.yml`](.github/workflows/firebase-hosting-merge.yml)               | Production build and deploy to the live channel.                                |
+| Event                                       | Workflow                                                                                                | What it does                                                                           |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Push to `develop`, `release/**` or `main`   | [`ci.yml`](.github/workflows/ci.yml)                                                                    | Format check, lint, test, build, typecheck and e2e of the affected projects.           |
+| Any pull request                            | [`ci.yml`](.github/workflows/ci.yml)                                                                    | Same checks.                                                                           |
+| PR `develop` → `release/*` (or any other)   | [`firebase-hosting-pull-request.yml`](.github/workflows/firebase-hosting-pull-request.yml)              | Firebase preview channel, link posted on the PR.                                       |
+| PR `release/x.y.z` → `main`, opened/updated | [`release.yml`](.github/workflows/release.yml) → **Version**                                            | Checks the version, sets it in `package.json`, commits `chore(release): x.y.z`.        |
+| PR `release/x.y.z` → `main`, opened/updated | [`release.yml`](.github/workflows/release.yml) → **Firebase preview**                                   | Builds the version commit and deploys it to a preview channel.                         |
+| PR `release/x.y.z` → `main`, merged         | [`release.yml`](.github/workflows/release.yml) → **Tag and GitHub release**                             | Tags the merge commit `x.y.z` and creates a GitHub release with notes.                 |
+| PR `release/x.y.z` → `main`, merged         | [`release.yml`](.github/workflows/release.yml) → [`deploy-live.yml`](.github/workflows/deploy-live.yml) | After the tag: production build of the merge commit, deployed to the **live** channel. |
+| By hand: _Actions → Deploy live_            | [`deploy-live.yml`](.github/workflows/deploy-live.yml)                                                  | Redeploys an existing release tag live, for example to roll back.                      |
+
+**Only a merged release goes live.** Any other push or merge into `main` runs CI but is not deployed; the `main` ruleset also requires a pull request, so nothing reaches `main` without one.
 
 ### Why the tag is made on merge, not when the branch is created
 
@@ -111,7 +114,7 @@ Pushing more fixes reruns both jobs; the version commit is only made once. Run `
 
 ### 3. Merge
 
-Merge with **Create a merge commit** (not squash or rebase), so `main` and `develop` keep sharing commits. Then **Release / Tag and GitHub release** tags the merge commit and creates the GitHub release, and **Deploy to Firebase Hosting on merge** deploys `main` live. You can delete the release branch; the tag keeps the version.
+Merge with **Create a merge commit** (not squash or rebase), so `main` and `develop` keep sharing commits. Then **Release / Tag and GitHub release** tags the merge commit and creates the GitHub release, and **Release / Deploy live** deploys that commit live. If tagging fails, nothing is deployed. You can delete the release branch; the tag keeps the version.
 
 ### 4. Back-merge main into develop
 
@@ -139,8 +142,18 @@ Then follow steps 2 to 4. The back-merge brings the fix into `develop`.
 
 - **Actions permissions**: _Settings → Actions → General → Workflow permissions_ must not block the workflows' `contents: write`. Choose _Read and write permissions_ if the Version or Tag job fails with `403`.
 - **Secret** used by the deploys: `FIREBASE_SERVICE_ACCOUNT_CV_ANGULAR_MFE`.
-- Recommended: branch protection on `main` (require a PR and the `CI` and `Release / Version` checks), a tag ruleset for `*.*.*`, and blocked force pushes on `release/**`.
-- Optional `RELEASE_TOKEN`: a push with the default `GITHUB_TOKEN` [doesn't start new workflow runs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow), so `CI` doesn't rerun on the bot's version commit. With required checks on `main` the PR then waits forever. Add a fine-grained token for this repository with **Contents: Read and write** as `RELEASE_TOKEN`; the Version job uses it automatically.
+- **Rulesets** (_Settings → Rules → Rulesets_), already set up:
+
+  | Ruleset            | Applies to     | Rules                                                                                                                     |
+  | ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------- |
+  | `main`             | default branch | Pull request required (0 approvals, so you can merge your own), merge commits only, no force push or deletion. No bypass. |
+  | `develop`          | `develop`      | No force push or deletion.                                                                                                |
+  | `release branches` | `release/**`   | No force push, so the bot's version commit can't be overwritten. Deleting after the merge is allowed.                     |
+  | `release tags`     | tags `*.*.*`   | Tags can't be moved or deleted. Creating them (by the Tag job) is allowed.                                                |
+
+  Required status checks are deliberately **not** on `main` yet: without `RELEASE_TOKEN` (below) the bot's version commit gets no checks, so every release PR would wait forever. After adding the token, add a _Require status checks to pass_ rule to the `main` ruleset with `main` (the CI job) and `Version`. Requiring `Version` also means only `release/*` PRs can be merged into `main`.
+
+- `RELEASE_TOKEN` (needed before requiring checks): a push with the default `GITHUB_TOKEN` [doesn't start new workflow runs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow), so `CI` doesn't rerun on the bot's version commit. With required checks on `main` the PR then waits forever. Add a fine-grained token for this repository with **Contents: Read and write** as `RELEASE_TOKEN`; the Version job uses it automatically.
 
 ## Troubleshooting
 

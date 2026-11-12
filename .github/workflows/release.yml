@@ -4,8 +4,9 @@
 #
 # - PR opened or updated: set the version from the branch name in package.json,
 #   commit it to the release branch and deploy a Firebase preview of that commit.
-# - PR merged: tag the merge commit on main with the version and create a GitHub release.
-#   The live deploy itself is done by firebase-hosting-merge.yml (push to main).
+# - PR merged: tag the merge commit on main with the version, create a GitHub release
+#   and deploy that commit live (deploy-live.yml). This is the only automatic live
+#   deploy: other pushes or merges into main are checked by CI but not deployed.
 
 name: Release
 
@@ -165,3 +166,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.branch.outputs.version }}
         run: gh release create "$VERSION" --verify-tag --title "$VERSION" --generate-notes --latest
+
+  deploy:
+    name: Deploy live
+    needs: tag
+    uses: ./.github/workflows/deploy-live.yml
+    with:
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
+    secrets: inherit
+    permissions:
+      checks: write
+      contents: read
