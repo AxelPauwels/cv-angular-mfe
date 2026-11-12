@@ -2,13 +2,6 @@
   "hosting": {
     "public": "dist/apps/cv-mfe/browser",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "redirects": [
-      {
-        "source": "/api",
-        "destination": "/api/",
-        "type": 301
-      }
-    ],
     "rewrites": [
       {
         "source": "**",
