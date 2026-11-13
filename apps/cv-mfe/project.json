@@ -19,7 +19,7 @@
         }
       },
       "defaultConfiguration": "production",
-      "dependsOn": ["docs"]
+      "dependsOn": ["docs", "version-info"]
     },
     "serve": {
       "continuous": true,
@@ -34,7 +34,7 @@
         "port": 4300,
         "outputPath": "dist/apps/cv-mfe-dev"
       },
-      "dependsOn": ["docs"]
+      "dependsOn": ["docs", "version-info"]
     },
     "test": {
       "executor": "@angular/build:unit-test",
@@ -95,6 +95,10 @@
             "glob": "**/*",
             "input": "dist/compodoc/cv-mfe",
             "output": "api"
+          },
+          {
+            "glob": "version.json",
+            "input": "dist/.version-info"
           }
         ],
         "styles": ["apps/cv-mfe/src/styles.scss"],
@@ -141,7 +145,20 @@
       "options": {
         "port": 4300
       },
-      "dependsOn": ["docs"]
+      "dependsOn": ["docs", "version-info"]
+    },
+    "version-info": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/package.json",
+        "{workspaceRoot}/tools/version-info/**/*"
+      ],
+      "outputs": ["{workspaceRoot}/dist/.version-info"],
+      "options": {
+        "command": "node tools/version-info/generate.mjs",
+        "cwd": "{workspaceRoot}"
+      }
     }
   }
 }

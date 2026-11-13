@@ -38,6 +38,24 @@ The version follows [semantic versioning](https://semver.org/): `major.minor.pat
 | New features, backwards compatible | minor  | 1.0.1 → 1.1.0 |
 | Breaking changes or a big redesign | major  | 1.1.0 → 2.0.0 |
 
+## Versions: what a release changes
+
+A release has **one version, the same everywhere**:
+
+| Where                                         | Set by                                                                      | After releasing `1.2.0`                                  |
+| --------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `release/x.y.z` branch name                   | `npm run nx:release` (or the `git push` question)                           | `release/1.2.0`                                          |
+| `package.json` and `package-lock.json` (root) | The `chore(release): x.y.z` commit on the release branch                    | `"version": "1.2.0"`                                     |
+| Git tag                                       | **Tag and GitHub release**, after the merge                                 | `1.2.0`                                                  |
+| GitHub release                                | **Tag and GitHub release**, after the merge                                 | `1.2.0`                                                  |
+| `/version.json` in the build                  | `nx run cv-mfe:version-info`, from `package.json`, on every build and serve | `{ "name": "@axel-pauwels/cv-mfe", "version": "1.2.0" }` |
+
+You never edit a version by hand: the prompt writes it, CI checks it (**Version**) and tags it. `version.json` is never committed: it's generated from `package.json`, so the live site always reports the released version. The host ([cv-angular](https://github.com/AxelPauwels/cv-angular)) reads it at runtime for _Technical → Versions_.
+
+**On `develop`** the version stays at the previous release until you merge `main` back ([step 4](#4-back-merge-main-into-develop)). Don't skip that step: without it, `develop` keeps the old version in `package.json`, and a local `npm start` reports that old version in `version.json`. The prompt still proposes the right next version (it starts from whichever is higher, the latest tag or `package.json`), but `develop` and `main` drift apart.
+
+**Not the app version**, on purpose: any package that would be published to npm from this repository gets its **own** version and tags (`name@x.y.z`), like the npm packages in [cv-angular](https://github.com/AxelPauwels/cv-angular). Their version says what changed for the people who install them, so it can't follow the app's.
+
 ## Choosing the version
 
 `npm run nx:release` and every `git push` of your checked-out branch ask:

@@ -1,4 +1,4 @@
-# The only way to the live Firebase channel. See README.release-branches.md.
+# The only way to the live Firebase channel. See README.release.md.
 #
 # - Called by release.yml after a merged release PR has been tagged.
 # - Run by hand (Actions → Deploy live → Run workflow) with an existing release
