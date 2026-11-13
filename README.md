@@ -55,7 +55,7 @@ When you add or change an input of `App`, document it with a JSDoc comment (what
 
 ## Releases
 
-`npm run nx:release` (or the question on `git push`) asks whether to release and how (patch, minor, major), then creates and pushes `release/x.y.z`. The release branch already contains the version commit. The PR `release/x.y.z` → `main` must pass its checks and gets a Firebase preview; merging it tags `x.y.z` (the same as the `package.json` version), creates a GitHub release and deploys live. `main` only accepts such release PRs (see the rulesets in [README.release-branches.md](README.release-branches.md)).
+`npm run nx:release` (or the question on `git push`) asks whether to release and how (patch, minor, major), then creates and pushes `release/x.y.z`. The release branch already contains the version commit. The PR `release/x.y.z` → `main` must pass its checks and gets a Firebase preview; merging it tags `x.y.z` (the same as the `package.json` version), creates a GitHub release and deploys live. `main` only accepts such release PRs (see the rulesets in [README.release.md](README.release.md)).
 
 ### Doing a release
 
@@ -87,7 +87,7 @@ Choosing patch, the script creates and pushes `release/1.0.1` (`develop` plus th
 
 A release branch is done once its PR is merged: don't push to it again. New work goes to `develop` and out with the next release.
 
-How it works in detail (branches, workflows, hotfixes, troubleshooting): see [README.release-branches.md](README.release-branches.md).
+How it works in detail (versions and `version.json`, branches, workflows, hotfixes, troubleshooting): see [README.release.md](README.release.md).
 
 ## Firebase hosting
 
@@ -99,7 +99,7 @@ Deploys are automatic; you normally don't run any Firebase command yourself.
 | **Live** (production) | **Only** when a `release/x.y.z` PR is merged into `main`, after the tag | `release.yml` → [`deploy-live.yml`](.github/workflows/deploy-live.yml) |
 | Redeploy / roll back  | By hand, for an existing release tag                                    | _Actions → Deploy live → Run workflow_, enter the tag (e.g. `1.0.0`)   |
 
-Other pushes or merges into `main` are checked by CI but never deployed live. See [README.release-branches.md](README.release-branches.md).
+Other pushes or merges into `main` are checked by CI but never deployed live. See [README.release.md](README.release.md).
 
 ### Local commands
 
